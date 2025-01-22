@@ -2,23 +2,55 @@ import { generateDeviceId, loadProxies, loadFile } from './utils/scripts.js';
 import { Gateway } from './utils/gateway.js';
 import log from './utils/logger.js';
 import banner from './utils/banner.js';
+import fetch from 'node-fetch';
+import { newAgent } from './utils/scripts.js';
+
 
 const PROXIES_FILE = 'proxies.txt'
 const USERS_FILE = 'userIds.txt'
 const SERVER = "gw0.streamapp365.com";
 const MAX_GATEWAYS = 32;
 
+async function dispatch(dev, user, proxy) {
+    const agent = newAgent(proxy);
+    try {
+        const response = await fetch('https://dist.streamapp365.com/dispatch', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                dev,
+                user,
+            }),
+            agent: agent,
+        });
+
+        if (!response.ok) {
+            throw new Error('Network response was not ok');
+        }
+
+        const data = await response.json();
+        return data;
+    } catch (error) {
+        return null;
+    }
+}
+
 async function setupGatewaysForUser(user) {
     const proxies = loadProxies(PROXIES_FILE);
     const numberGateway = proxies.length > MAX_GATEWAYS ? MAX_GATEWAYS : proxies.length;
     const userGateways = [];
+    let proxyIndex = 0;
     for (let i = 0; i < numberGateway; i++) {
-        const proxy = proxies[i % proxies.length];
+        const proxy = proxies[proxyIndex];
+        proxyIndex = (proxyIndex + 1) % proxies.length;
         try {
             const deviceId = generateDeviceId();
             log.info(`Connecting to Gateway ${i + 1} for User ${user} using Device ID: ${deviceId} via Proxy: ${proxy}`);
 
             const gateway = new Gateway(SERVER, user, deviceId, proxy);
+            setInterval(() => dispatch(deviceId, user, proxy), 1000 * 60 * 1);
             userGateways.push(gateway);
 
             await new Promise((resolve) => setTimeout(resolve, 1000));

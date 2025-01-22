@@ -2,9 +2,12 @@ import fetch from 'node-fetch';
 import WebSocket from 'ws';
 import log from './logger.js';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { newAgent } from './scripts.js';
 
 class Task {
     constructor(taskid, method, url, headers, body, script, debug, timeout, gateway, proxy = null) {
+        this.proxy = proxy;
+        this.agent = this.proxy ? newAgent(proxy) : null;
         this.taskid = taskid;
         this.controller = new AbortController();
         this.born = Date.now();
@@ -17,8 +20,8 @@ class Task {
             headers,
         };
 
-        if (proxy) {
-            fetchOptions.agent = new HttpsProxyAgent(proxy);
+        if (this.proxy) {
+            fetchOptions.agent = this.agent;
         }
 
         if (body && method === "POST") {
@@ -82,6 +85,8 @@ const DEFAULT_ERROR_CODE = ERROR_CODES.NETWORK_ERROR;
 
 class Gateway {
     constructor(server, user, dev, proxy = null) {
+        this.proxy = proxy;
+        this.agent = this.proxy ? newAgent(proxy) : null;
         this.server = server;
         this.user = user;
         this.dev = dev;
@@ -91,7 +96,7 @@ class Gateway {
         this.wsOptions = {};
 
         if (this.proxy) {
-            this.wsOptions.agent = new HttpsProxyAgent(this.proxy);
+            this.wsOptions.agent = this.agent;
         }
 
         this.ws = new WebSocket(`wss://${server}/connect`, this.wsOptions);
