@@ -2,7 +2,7 @@
 Mine Data, Fuel AI, Earn Rewards Join the Stream AI Revolution
 ![alt text](image-2.png)
 
-- Website [https://app.allstream.ai/](https://app.allstream.ai/index?referralCode=FlGQxaTO)
+- Website [https://app.allstream.ai/](https://invite.minionlab.io/?referralCode=dsUPlZQH)
 - Twitter/X [@allstream_ai](https://x.com/allstream_ai)
 
 ## Features
@@ -16,7 +16,7 @@ Mine Data, Fuel AI, Earn Rewards Join the Stream AI Revolution
 - **Node.js**: Ensure you have Node.js installed.
 - **NPM**: Ensure you have npm installed.
 - **AiStream ID**: follow instructions below to get
-- Create AiStream here : [https://app.allstream.ai/](https://app.allstream.ai/index?referralCode=FlGQxaTO)
+- Create AiStream here : [https://app.allstream.ai/](https://invite.minionlab.io/?referralCode=dsUPlZQH)
 - F12 to inspect if you already login
 - find MyInfo from Network and copy your id.
    ![uid](image-1.png)
@@ -26,7 +26,7 @@ Mine Data, Fuel AI, Earn Rewards Join the Stream AI Revolution
 
 1. Clone this repository:
    ```bash
-   git clone https://github.com/Zlkcyber/streamAi.git
+   git clone https://github.com/airdropbomb/streamAi.git
    cd streamAi
    ```
 2. Install dependencies:
