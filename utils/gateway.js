@@ -7,7 +7,7 @@ import { newAgent } from './scripts.js';
 class Task {
     constructor(taskid, method, url, headers, body, script, debug, timeout, gateway, proxy = null) {
         this.proxy = proxy;
-        this.agent = this.proxy ? newAgent(proxy) : null;
+        this.agent = proxy ? newAgent(proxy) : null; // Proxy မရှိရင် agent က null
         this.taskid = taskid;
         this.controller = new AbortController();
         this.born = Date.now();
@@ -21,7 +21,7 @@ class Task {
         };
 
         if (this.proxy) {
-            fetchOptions.agent = this.agent;
+            fetchOptions.agent = this.agent; // Proxy ရှိရင်ပဲ agent ထည့်မယ်
         }
 
         if (body && method === "POST") {
@@ -33,7 +33,7 @@ class Task {
         this.task = fetch(url, fetchOptions)
             .then(async (response) => {
                 const responseText = await response.text();
-                log.info(`Response: ${responseText}`);
+                log.info(`Task ${taskid} Response: ${responseText}${this.proxy ? ` via Proxy: ${this.proxy}` : ''}`);
 
                 let parsedResult = "";
                 if (script && script.length > 0) {
@@ -49,11 +49,11 @@ class Task {
                 }
             })
             .catch((error) => {
-                log.error(`Task ${taskid} failed: ${error.message}`);
+                log.error(`Task ${taskid} failed${this.proxy ? ` with Proxy ${this.proxy}` : ''}: ${error.message}`);
                 this.gateway.transferError(taskid, error.message, error.code || DEFAULT_ERROR_CODE, statusCode);
             })
             .finally(() => {
-                log.info(`Task ${taskid} completed`);
+                log.info(`Task ${taskid} completed${this.proxy ? ` via Proxy: ${this.proxy}` : ''}`);
             });
     }
 
@@ -61,7 +61,6 @@ class Task {
         this.controller.abort();
     }
 }
-
 
 class CustomError extends Error {
     constructor(code, message) {
@@ -86,26 +85,25 @@ const DEFAULT_ERROR_CODE = ERROR_CODES.NETWORK_ERROR;
 class Gateway {
     constructor(server, user, dev, proxy = null) {
         this.proxy = proxy;
-        this.agent = this.proxy ? newAgent(proxy) : null;
+        this.agent = proxy ? newAgent(proxy) : null; // Proxy မရှိရင် agent က null
         this.server = server;
         this.user = user;
         this.dev = dev;
-        this.proxy = proxy;
         this.isConnected = false;
         this.conns = new Map();
         this.wsOptions = {};
 
         if (this.proxy) {
-            this.wsOptions.agent = this.agent;
+            this.wsOptions.agent = this.agent; // Proxy ရှိရင်ပဲ agent ထည့်မယ်
         }
 
-        this.ws = new WebSocket(`wss://${server}/connect`, this.wsOptions);
+        this.ws = new WebSocket(`wss://${server}/connect`, this.wsOptions); // Proxy မရှိရင် default agent သုံးမယ်
         this._setupWebSocket();
     }
 
     _setupWebSocket() {
         this.ws.on("open", () => {
-            log.info("Gateway connected.");
+            log.info(`Gateway connected${this.proxy ? ` via Proxy: ${this.proxy}` : ' without Proxy'}`);
             this.isConnected = true;
             this._startPingInterval();
             this.sendMessage(
@@ -136,29 +134,29 @@ class Gateway {
             }
 
             if (messageString === "pong") {
-                log.info(`Device ID: [ \x1b[36m${this.dev}\x1b[0m ] Message: [ \x1b[36m${messageString}\x1b[0m ]`);
+                log.info(`Device ID: [ \x1b[36m${this.dev}\x1b[0m ] Message: [ \x1b[36m${messageString}\x1b[0m ]${this.proxy ? ` via Proxy: ${this.proxy}` : ''}`);
                 return;
             } else {
-                log.info(`Received message: ${messageString}`);
+                log.info(`Received message: ${messageString}${this.proxy ? ` via Proxy: ${this.proxy}` : ''}`);
             }
 
             try {
                 const message = JSON.parse(messageString);
                 this._handleMessage(message);
             } catch (error) {
-                log.error(`Error handling message: ${error.message}`);
+                log.error(`Error handling message${this.proxy ? ` with Proxy ${this.proxy}` : ''}: ${error.message}`);
             }
         });
 
         this.ws.on("close", () => {
-            log.info("Gateway disconnected.");
+            log.info(`Gateway disconnected${this.proxy ? ` via Proxy: ${this.proxy}` : ' without Proxy'}`);
             this.isConnected = false;
             this._clearPingInterval();
             this._reconnect();
         });
 
         this.ws.on("error", (error) => {
-            log.error(`WebSocket error: ${error.message}`);
+            log.error(`WebSocket error${this.proxy ? ` with Proxy ${this.proxy}` : ''}: ${error.message}`);
         });
     }
 
@@ -178,7 +176,7 @@ class Gateway {
                     this.sendMessage(JSON.stringify({ type: "ping" }));
                 }
             } catch (error) {
-                log.error(`Failed to send ping: ${error.message}`);
+                log.error(`Failed to send ping${this.proxy ? ` with Proxy ${this.proxy}` : ''}: ${error.message}`);
             }
         }, PING_INTERVAL);
     }
@@ -202,7 +200,7 @@ class Gateway {
                 this._handleShow();
                 break;
             default:
-                log.info(`Unexpected message type: ${message.type}`);
+                log.info(`Unexpected message type: ${message.type}${this.proxy ? ` via Proxy: ${this.proxy}` : ''}`);
         }
     }
 
@@ -227,7 +225,7 @@ class Gateway {
             throw new Error("Request missing task ID.");
         }
 
-        log.info(`Handling task ${taskid}, URL: ${url}`);
+        log.info(`Handling task ${taskid}, URL: ${url}${this.proxy ? ` via Proxy: ${this.proxy}` : ''}`);
         this.conns.set(
             taskid,
             new Task(taskid, method, url, headers, body, script, data.debug, timeout, this, this.proxy)
@@ -243,12 +241,12 @@ class Gateway {
     }
 
     _handleShow() {
-        log.info("Active tasks:", Array.from(this.conns.keys()));
+        log.info(`Active tasks: ${Array.from(this.conns.keys())}${this.proxy ? ` via Proxy: ${this.proxy}` : ''}`);
     }
 
     _reconnect() {
         setTimeout(() => {
-            log.info("Reconnecting to gateway...");
+            log.info(`Reconnecting to gateway${this.proxy ? ` via Proxy: ${this.proxy}` : ' without Proxy'}...`);
             this.ws = new WebSocket(`wss://${this.server}/connect`, this.wsOptions);
             this._setupWebSocket();
         }, 3000);
@@ -262,7 +260,7 @@ class Gateway {
             taskid,
             result: { parsed, html: base64Encoded, rawStatus },
         };
-        log.info(`Sending result: ${JSON.stringify(result)}`);
+        log.info(`Sending result: ${JSON.stringify(result)}${this.proxy ? ` via Proxy: ${this.proxy}` : ''}`);
         this.sendMessage(JSON.stringify(result));
         this.conns.delete(taskid);
     }
@@ -275,11 +273,10 @@ class Gateway {
             errorCode,
             rawStatus,
         };
-        log.error(`Sending error: ${JSON.stringify(errorResponse)}`);
+        log.error(`Sending error: ${JSON.stringify(errorResponse)}${this.proxy ? ` via Proxy: ${this.proxy}` : ''}`);
         this.sendMessage(JSON.stringify(errorResponse));
         this.conns.delete(taskid);
     }
 }
 
 export { Gateway, Task, CustomError };
-
